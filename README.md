@@ -24,12 +24,33 @@ use the original TTF file (see [below](#TODO)).
 - [#1:](https://github.com/lmmx/emoji-liif/issues/1) determine a colour distance function to choose
   a colour as far from any colour in the image to use as the alpha channel colour upon flattening.
 
-## Source image provenance and copyright
+## Source image provenance
 
 The two emoji image sets are sourced from:
 
 - Emojipedia (iOS 14.2) 72x72 PNG
 - OSX 10.15 (Catalina) 160x160 PNG
 
+## Copyright
+
 All credit and copyright belongs to Apple for the iOS/OSX emoji character images, reproduced here
 under fair use and for noncommercial purposes.
+
+Emojipedia's _[Emoji Image Licensing](https://emojipedia.org/licensing/)_ page states:
+
+> To the best of our knowledge, specific information about licensing emojis from Apple... is not publicly available.
+> 
+> Unless otherwise stated, emoji images are © copyright, and enquiries about commercial
+> licensing of emoji images should be directed to their respective font vendors.
+
+They also link to [a 2017 blog post, _“Who Owns Emoji?”_](https://blog.emojipedia.org/who-owns-emoji/), which states:
+
+> Apple has not made licensing options publicly available for Apple Color Emoji.
+> 
+> As such, those wanting to use Apple’s emoji images may be restricted to using these images in a way
+> that could be considered fair use.
+
+[Conventional reading](https://guides.nyu.edu/fairuse) of fair use includes such purposes as:
+
+> "limited use of copyrighted material without permission for purposes such as criticism,
+> parody, news reporting, research and scholarship, and teaching."
