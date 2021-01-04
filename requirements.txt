@@ -5,3 +5,4 @@ fonttools
 imageio
 matplotlib
 imagehash
+pandas
