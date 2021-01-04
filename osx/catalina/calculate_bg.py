@@ -7,23 +7,9 @@ import sqlite3
 
 db_filename = "emoji_rgb_calc.db"
 
-def intersect2d(ar1, ar2):
-    "Courtesy of https://stackoverflow.com/a/8317403/2668831"
-    nrows, ncols = ar1.shape
-    dtype={'names':['f{}'.format(i) for i in range(ncols)], 'formats':ncols * [ar1.dtype]}
-
-    result = np.intersect1d(ar1.view(dtype), ar2.view(dtype))
-
-    # This last bit is optional if you're okay with "C" being a structured array...
-    result = C.view(ar1.dtype).reshape(-1, ncols)
-    return result
-
 def euclidean_dist(v1, v2):
     "Returns the Euclidean distance between vectors 'v1' and 'v2'."
     return np.linalg.norm(v1 - v2)
-
-def array_norm(a1, a2):
-    return np.sqrt((np.square(a1[:,np.newaxis] - a2).sum(axis=2)))
 
 def cartesian_product(arrays):
     "Courtesy of https://stackoverflow.com/a/11146645/2668831"
