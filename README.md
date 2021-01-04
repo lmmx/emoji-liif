@@ -18,8 +18,6 @@ use the original TTF file (see [below](#TODO)).
 
 ## TODO
 
-- [#3:](https://github.com/lmmx/emoji-liif/issues/3) use 160x160 thumbnails extracted from OSX TTF
-  rather than 72x72 thumbnails scraped from Emojipedia
 - [#2:](https://github.com/lmmx/emoji-liif/issues/2) add background info on the LIIF method
 - [#1:](https://github.com/lmmx/emoji-liif/issues/1) determine a colour distance function to choose
   a colour as far from any colour in the image to use as the alpha channel colour upon flattening.

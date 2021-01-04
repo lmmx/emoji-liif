@@ -2,3 +2,5 @@ bs4
 requests
 tqdm
 fonttools
+imageio
+matplotlib
