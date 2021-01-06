@@ -19,6 +19,7 @@ use the original TTF file (see [below](#TODO)).
 ## TODO
 
 - [#2:](https://github.com/lmmx/emoji-liif/issues/2) add background info on the LIIF method
+- 3122/3165 Apple Color Emoji font TTF glyphs are currently matched from OSX to Emojipedia: the 43 missed glyphs need to be matched
 
 ## Source image provenance
 
