@@ -7,6 +7,7 @@ import warnings
 from operator import and_ as bitwise_and
 from functools import reduce
 from sys import stderr
+from enum import Enum
 
 result_db = "matches.db"
 osx_db = Path("osx/catalina/osx_emoji_hashes.db")
@@ -51,6 +52,50 @@ def record_match(hit, glyph, glyph_dict):
     glyph_dict.update({ejp_filename: {f"{L}_dist": -1 for L in "acd"}})
     codepoint_matched_glyphs.update({glyph: glyph_dict})
 
+class ToneSigns(Enum):
+    light        = "1" 
+    medium_light = "2" 
+    medium       = "3" 
+    medium_dark  = "4" 
+    dark         = "5" 
+
+def attempt_singular_assignment(glyph, glyph_dict):
+    "Attempt to whittle down multiple options from filename hints"
+    glyph_stem = Path(glyph).stem
+    dot_signs = glyph_stem[glyph_stem.find(".")+1:].split(".")
+    numeric_dot_signs = [d for d in dot_signs if d.isnumeric() and len(d) == 1]
+    if len(numeric_dot_signs) == 1:
+        # There's a single numeric tone sign
+        nds = numeric_dot_signs[0]
+        if nds == "0":
+            # Ignore keys with "skin tone" in them
+            excl_str = "skin-tone"
+            proposed_dict = {k: v for (k,v) in glyph_dict.items() if excl_str not in k}
+            if len(proposed_dict) == 1:
+                glyph_dict.clear()
+                glyph_dict.update(proposed_dict)
+        elif nds in ToneSigns._value2member_map_:
+            tone_str = ToneSigns(nds).name.replace("_", "-")
+            other_tone_strings = [
+                s.replace("_", "-") for s in ToneSigns._member_map_
+                if s.replace("_", "-") != tone_str
+            ]
+            match_str = f"{tone_str}-skin-tone"
+            excl_str_list = [f"{tone_str}-skin-tone" for tone_str in other_tone_strings]
+            proposed_dict = {
+                k: v for (k,v) in glyph_dict.items() if match_str in k
+                if not any(
+                    excl_str in k for excl_str in excl_str_list
+                    if excl_str not in match_str
+                )
+            }
+            if len(proposed_dict) == 1:
+                glyph_dict.clear()
+                glyph_dict.update(proposed_dict)
+        else:
+            # Should never happen (but print it if it does)
+            print(f"Unexpected numeric sign '{nds}' in '{glyph}'", file=stderr)
+
 codepoint_matched_glyphs = {}
 codepoint_matched_ejp_filenames = []
 for i, osx_row in tqdm(osx_df.iterrows(), total=osx_df.shape[0]):
@@ -94,13 +139,14 @@ with open("codepoint_matched_ejp_filenames.txt", "w") as f:
     f.writelines([f"{l}\n" for l in codepoint_matched_ejp_filenames])
 
 n_rows = osx_df.shape[0]
-pbar = tqdm(total=n_rows + 1)
-i = 0
-#for i, osx_row in tqdm(osx_df.iterrows(), total=osx_df.shape[0]):
-while i < n_rows:
-    osx_row = osx_df.iloc[i]
+pbar = tqdm(total=n_rows)
+idx_row = 0
+while idx_row < n_rows:
+    osx_row = osx_df.iloc[idx_row]
     glyph = osx_row.filename
     if glyph == "glyph-hiddenglyph.png":
+        idx_row += 1
+        pbar.update(1)
         continue # not a real glyph, will not get a match, skip it
     if glyph in codepoint_matched_glyphs:
         glyph_dict = codepoint_matched_glyphs.get(glyph)
@@ -126,8 +172,14 @@ while i < n_rows:
                 if matchable_codepts[0] == "27a1":
                     breakpoint()
                 print(f"Retry failed with {matchable_codepts[0]}", file=stderr)
-                # Iterate over all rows (the following line is similar to np.ones_like)
-                idx_filter = pd.Series(1, ejp_df.index, dtype="bool")
+                if retry_with_all_rows:
+                    # Iterate over all rows (the following line is similar to np.ones_like)
+                    idx_filter = pd.Series(1, ejp_df.index, dtype="bool")
+                #else:
+                #    print(f"Abandoning {glyph}")
+                #    i += 1
+                #    pbar.update(1)
+                #    continue
         for i, ejp_row in ejp_df[idx_filter].iterrows():
             ejp_filename = ejp_row.filename
             if ejp_filename in codepoint_matched_ejp_filenames:
@@ -164,15 +216,18 @@ while i < n_rows:
             else:
                 dist_dict = {"a_dist": dist_a, "c_dist": dist_c, "d_dist": dist_d}
                 glyph_dict.update({ejp_filename: dist_dict})
-        if glyph_dict:
-            write_result_to_db(glyph, glyph_dict)
-            retry_with_all_rows = False
-            i += 1
-        elif retry_with_all_rows:
-            # Already retried, give up and just print an error message
-            print(f"Warning: no match was found for '{glyph}'", file=stderr)
-            retry_with_all_rows = False
-            i += 1
-        else:
-            retry_with_all_rows = True
-            # Do not increment i
+    if glyph_dict:
+        if len(glyph_dict) > 1:
+            attempt_singular_assignment(glyph, glyph_dict)
+        write_result_to_db(glyph, glyph_dict)
+        retry_with_all_rows = False
+        idx_row += 1
+        pbar.update(1)
+    elif retry_with_all_rows:
+        # Already retried, give up and just print an error message
+        print(f"Warning: no match was found for '{glyph}'", file=stderr)
+        retry_with_all_rows = False
+        idx_row += 1
+    else:
+        retry_with_all_rows = True
+        # Do not increment idx_row (or update pbar) so loop will retry same row
