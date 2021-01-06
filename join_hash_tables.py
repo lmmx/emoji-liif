@@ -73,6 +73,11 @@ class CustomGenders(Enum):
     M_u1F93C = "men"
     W_u1F93C = "women"
     _u1F93C = "people"
+    #_u1F468_u1F91D_u1F468 = "men"
+    #_u1F469_u1F91D_u1F468 = "woman-and-man"
+    #_u1F9D1_u1F91D_u1F9D1 = "people"
+    #_u1F9D1 = "person"
+    #_u1F468 = "man"
 
 def attempt_singular_assignment(glyph, glyph_dict):
     "Attempt to whittle down multiple options from filename hints"
@@ -80,6 +85,7 @@ def attempt_singular_assignment(glyph, glyph_dict):
     glyph_codepoint_part = glyph[glyph.find("u"):glyph.find(".")]
     dot_signs = glyph_stem[glyph_stem.find(".")+1:].split(".")
     numeric_dot_signs = [d for d in dot_signs if d.isnumeric() and len(d) == 1]
+    numpair_dot_signs = [d for d in dot_signs if d.isnumeric() and len(d) == 2]
     alphabetic_dot_signs = [d for d in dot_signs if d.isalpha() and len(d) == 1]
     if len(numeric_dot_signs) == 1:
         # There's a single numeric tone sign
@@ -112,6 +118,39 @@ def attempt_singular_assignment(glyph, glyph_dict):
         else:
             # Should never happen (but print it if it does)
             print(f"Unexpected numeric sign '{nds}' in '{glyph}'", file=stderr)
+    elif len(numpair_dot_signs) == 1:
+        # There's a single numeric paired tone sign (i.e. two tone signs together)
+        nds = tuple(numpair_dot_signs[0])
+        if all(s in ToneSigns._value2member_map_ for s in nds):
+            tone_strings = tuple(ToneSigns(s).name.replace("_", "-") for s in nds)
+            other_tone_strings = [
+                s for s in [x.replace("_", "-") for x in ToneSigns._member_map_]
+                if s not in tone_strings
+            ]
+            match_strings = tuple(f"{tone_str}-skin-tone" for tone_str in tone_strings)
+            n_light, n_med, n_dark = [
+                len([m for m in match_strings if x in m])
+                for x in ("light", "medium", "dark")
+            ]
+            excl_str_list = [f"{tone_str}-skin-tone" for tone_str in other_tone_strings]
+            proposed_dict = {
+                k: v for (k,v) in glyph_dict.items()
+                if not any(
+                    excl_str in k for excl_str in excl_str_list
+                    if all(excl_str not in match_str for match_str in match_strings)
+                )
+                if k.find(match_strings[0]) > -1
+                if k[k.find(match_strings[0]):].find(match_strings[1]) > -1
+                if k.count("light") == n_light
+                if k.count("medium") == n_med
+                if k.count("dark") == n_dark
+            }
+            if len(proposed_dict) < len(glyph_dict):
+                glyph_dict.clear()
+                glyph_dict.update(proposed_dict)
+        else:
+            # Should never happen (but print it if it does)
+            print(f"Unexpected numeric sign '{nds}' in '{glyph}'", file=stderr)
     if len(glyph_dict) > 1:
         # The results still need to be whittled down, try gender assignment
         if len(alphabetic_dot_signs) == 1:
@@ -126,7 +165,11 @@ def attempt_singular_assignment(glyph, glyph_dict):
                 print(f"Got an unrecognised gender '{ads}', ignoring", file=stderr)
                 return
         else:
-            if len([d for d in dot_signs if d.isalpha()]) == 0:
+            # May be implied_gender in codepoints e.g. "man and woman" or "men"
+            gendered_codepoint = "f_{glyph_codepoint_part}"
+            if gendered_codepoint in CustomGenders._member_map_:
+                gender_str = CustomGenders[gendered_codepoint].value
+            elif len([d for d in dot_signs if d.isalpha()]) == 0:
                 gender_str = "person" # or gender may just not be stated
             else:
                 print(f"'{glyph}' may contain a multipart gender sign, ignoring", file=stderr)
