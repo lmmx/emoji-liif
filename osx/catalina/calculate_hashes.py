@@ -5,11 +5,11 @@ from PIL import Image
 from imagehash import average_hash, colorhash, dhash
 
 def hash_emoji(img_fname):
-    "Return average and color hashes (lengths 64 and 42 respectively)"
+    "Return average/color/diff hashes (lengths 64, 49, 64 respectively)"
     img = Image.open(img_fname)
     mini_img = img.resize((32,32))
     a = average_hash(mini_img, hash_size=16)
-    c = colorhash(mini_img, binbits=12)
+    c = colorhash(mini_img, binbits=14) # must be 14 to get square array
     d = dhash(mini_img, hash_size=16)
     return str(a), str(c), str(d)
 
@@ -22,7 +22,7 @@ with sqlite3.connect(db_filename) as conn:
     c.execute("""
     CREATE TABLE IF NOT EXISTS osx_hashes
     (filename tinytext, codepoint_part varchar(32), a_hash varchar(64),
-    c_hash varchar(42), d_hash varchar(64), Constraint pk_fn Primary key(filename))
+    c_hash varchar(49), d_hash varchar(64), Constraint pk_fn Primary key(filename))
     """)
 
 for png in tqdm(pngs):

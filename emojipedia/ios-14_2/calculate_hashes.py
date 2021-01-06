@@ -9,7 +9,7 @@ def hash_emoji(img_fname):
     img = Image.open(img_fname)
     mini_img = img.resize((32,32))
     a = average_hash(mini_img, hash_size=16)
-    c = colorhash(mini_img, binbits=12)
+    c = colorhash(mini_img, binbits=14) # must be 14 to get square array
     d = dhash(mini_img, hash_size=16)
     return str(a), str(c), str(d)
 
@@ -22,7 +22,7 @@ with sqlite3.connect(db_filename) as conn:
     c.execute("""
     CREATE TABLE IF NOT EXISTS emojipedia_hashes
     (filename tinytext, descriptor varchar(100), codepoint varchar(100),
-    a_hash varchar(64), c_hash varchar(42), d_hash varchar(64),
+    a_hash varchar(64), c_hash varchar(49), d_hash varchar(64),
     Constraint pk_fn Primary key(filename))
     """)
 

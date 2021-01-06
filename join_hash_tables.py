@@ -53,17 +53,34 @@ def record_match(hit, glyph, glyph_dict):
     codepoint_matched_glyphs.update({glyph: glyph_dict})
 
 class ToneSigns(Enum):
-    light        = "1" 
-    medium_light = "2" 
-    medium       = "3" 
-    medium_dark  = "4" 
-    dark         = "5" 
+    light        = "1"
+    medium_light = "2"
+    medium       = "3"
+    medium_dark  = "4"
+    dark         = "5"
+
+class GenderSigns(Enum):
+    M = "man"
+    W = "woman"
+
+class CustomGenders(Enum):
+    M_u1F9DC = "merman"
+    W_u1F9DC = "mermaid"
+    _u1F9DC = "merperson"
+    M_u1F46F = "men"
+    W_u1F46F = "women"
+    _u1F46F = "people"
+    M_u1F93C = "men"
+    W_u1F93C = "women"
+    _u1F93C = "people"
 
 def attempt_singular_assignment(glyph, glyph_dict):
     "Attempt to whittle down multiple options from filename hints"
     glyph_stem = Path(glyph).stem
+    glyph_codepoint_part = glyph[glyph.find("u"):glyph.find(".")]
     dot_signs = glyph_stem[glyph_stem.find(".")+1:].split(".")
     numeric_dot_signs = [d for d in dot_signs if d.isnumeric() and len(d) == 1]
+    alphabetic_dot_signs = [d for d in dot_signs if d.isalpha() and len(d) == 1]
     if len(numeric_dot_signs) == 1:
         # There's a single numeric tone sign
         nds = numeric_dot_signs[0]
@@ -71,7 +88,7 @@ def attempt_singular_assignment(glyph, glyph_dict):
             # Ignore keys with "skin tone" in them
             excl_str = "skin-tone"
             proposed_dict = {k: v for (k,v) in glyph_dict.items() if excl_str not in k}
-            if len(proposed_dict) == 1:
+            if len(proposed_dict) < len(glyph_dict):
                 glyph_dict.clear()
                 glyph_dict.update(proposed_dict)
         elif nds in ToneSigns._value2member_map_:
@@ -89,12 +106,47 @@ def attempt_singular_assignment(glyph, glyph_dict):
                     if excl_str not in match_str
                 )
             }
-            if len(proposed_dict) == 1:
+            if len(proposed_dict) < len(glyph_dict):
                 glyph_dict.clear()
                 glyph_dict.update(proposed_dict)
         else:
             # Should never happen (but print it if it does)
             print(f"Unexpected numeric sign '{nds}' in '{glyph}'", file=stderr)
+    if len(glyph_dict) > 1:
+        # The results still need to be whittled down, try gender assignment
+        if len(alphabetic_dot_signs) == 1:
+            # There's a single alphabetic gender sign
+            ads = alphabetic_dot_signs[0]
+            gendered_codepoint = f"{ads}_{glyph_codepoint_part}"
+            if gendered_codepoint in CustomGenders._member_map_:
+                gender_str = CustomGenders[gendered_codepoint].value
+            elif ads in "MW":
+                gender_str = GenderSigns[ads].value
+            else:
+                print(f"Got an unrecognised gender '{ads}', ignoring", file=stderr)
+                return
+        else:
+            if len([d for d in dot_signs if d.isalpha()]) == 0:
+                gender_str = "person" # or gender may just not be stated
+            else:
+                print(f"'{glyph}' may contain a multipart gender sign, ignoring", file=stderr)
+                return # this could be a MM/MW multi-part string, skip
+        other_genders = [g for g in ("man", "woman", "person") if g != gender_str]
+        proposed_dict = {
+            k: v for (k,v) in glyph_dict.items()
+            if gender_str in k.replace("_", "-").split("-")
+            if not any(excl_str in k.split("-") for excl_str in other_genders)
+        }
+        if len(proposed_dict) == 0 and gender_str == "person":
+            # The gender may be distinguished by a lack of gendered noun instead
+            # so remove the condition matching on the word "person"
+            proposed_dict = {
+                k: v for (k,v) in glyph_dict.items()
+                if not any(excl_str in k.split("-") for excl_str in other_genders)
+            }
+        if len(proposed_dict) < len(glyph_dict):
+            glyph_dict.clear()
+            glyph_dict.update(proposed_dict)
 
 codepoint_matched_glyphs = {}
 codepoint_matched_ejp_filenames = []
@@ -156,9 +208,10 @@ while idx_row < n_rows:
             warnings.simplefilter("ignore")
             oah, och, odh = [hex_to_hash(osx_row.get(f"{L}_hash")) for L in "acd"]
         glyph_codepoints = glyph[glyph.find("u"):glyph.find(".")].split("_")
-        if glyph == "glyph-u1F468_u1F3ED.5.png":
-            pass # breakpoint()
-        matchable_codepts = [x.lstrip("u").lower() for x in glyph_codepoints]
+        matchable_codepts = [
+            p[3:].lower() if p.startswith("u00") else p.lstrip("u").lower()
+            for p in glyph_codepoints
+        ]
         partial_matchers = [ejp_df.filename.str.contains(x) for x in matchable_codepts]
         row_filter = reduce(bitwise_and, partial_matchers)
         if row_filter.any():
@@ -175,11 +228,19 @@ while idx_row < n_rows:
                 if retry_with_all_rows:
                     # Iterate over all rows (the following line is similar to np.ones_like)
                     idx_filter = pd.Series(1, ejp_df.index, dtype="bool")
-                #else:
-                #    print(f"Abandoning {glyph}")
-                #    i += 1
-                #    pbar.update(1)
-                #    continue
+        # Attempt to match without even considering the hashes, from filename alone
+        if ejp_df[idx_filter].shape[0] < 50: # probably too high a threshold who knows
+            v = {f"{L}_dist": -1 for L in "acd"}
+            pre_hash_glyph_dict = {k: v for k in ejp_df[idx_filter].filename}
+            attempt_singular_assignment(glyph, pre_hash_glyph_dict)
+            if len(pre_hash_glyph_dict) == 1:
+                glyph_dict = pre_hash_glyph_dict
+                #print(f"Pre-hash singular assignment for '{glyph}': {glyph_dict}")
+                write_result_to_db(glyph, glyph_dict)
+                retry_with_all_rows = False
+                idx_row += 1
+                pbar.update(1)
+                continue
         for i, ejp_row in ejp_df[idx_filter].iterrows():
             ejp_filename = ejp_row.filename
             if ejp_filename in codepoint_matched_ejp_filenames:
@@ -187,6 +248,7 @@ while idx_row < n_rows:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 eah, ech, edh = [hex_to_hash(ejp_row.get(f"{L}_hash")) for L in "acd"]
+                #ech = hex_to_flathash(ejp_row.get("c_hash")) # unsure if needed yet
             oah_s, och_s, odh_s = [v.hash.shape for v in (oah, och, odh)]
             eah_s, ech_s, edh_s = [v.hash.shape for v in (eah, ech, edh)]
             if oah_s != eah_s or och_s != ech_s or odh_s != edh_s:
@@ -225,6 +287,7 @@ while idx_row < n_rows:
         pbar.update(1)
     elif retry_with_all_rows:
         # Already retried, give up and just print an error message
+        # Possibly due to the true match having incompatible hash sizes (can happen)
         print(f"Warning: no match was found for '{glyph}'", file=stderr)
         retry_with_all_rows = False
         idx_row += 1
