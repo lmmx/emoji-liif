@@ -79,8 +79,14 @@ class CustomGenders(Enum):
     #_u1F9D1 = "person"
     #_u1F468 = "man"
 
+class TwinCodePoints(Enum):
+    u1F469_u1F91D_u1F468 = "1f46b" # man-and-woman-holding-hands
+    u1F468_u1F91D_u1F468 = "1f46c" # men-holding hands
+    u1F469_u1F91D_u1F469 = "1f46d" # women-holding-hands
+
 def attempt_singular_assignment(glyph, glyph_dict):
     "Attempt to whittle down multiple options from filename hints"
+    # TODO refactor glyph into a string-based class
     glyph_stem = Path(glyph).stem
     glyph_codepoint_part = glyph[glyph.find("u"):glyph.find(".")]
     dot_signs = glyph_stem[glyph_stem.find(".")+1:].split(".")
@@ -91,8 +97,6 @@ def attempt_singular_assignment(glyph, glyph_dict):
         if len({*p}) == 1:
             twin_pair = numpair_dot_signs.pop(idx_p)
             numeric_dot_signs.append(twin_pair[0])
-            #if glyph.startswith("glyph-u1F469_u1F91D_u1F468"):
-            #    breakpoint()
     if len(numeric_dot_signs) == 1:
         # There's a single numeric tone sign
         nds = numeric_dot_signs[0]
@@ -110,6 +114,8 @@ def attempt_singular_assignment(glyph, glyph_dict):
                 if s.replace("_", "-") != tone_str
             ]
             match_str = f"{tone_str}-skin-tone"
+            tones = ["light", "medium", "dark"]
+            n_light, n_med, n_dark = map(match_str.count, tones)
             excl_str_list = [f"{tone_str}-skin-tone" for tone_str in other_tone_strings]
             proposed_dict = {
                 k: v for (k,v) in glyph_dict.items() if match_str in k
@@ -117,6 +123,7 @@ def attempt_singular_assignment(glyph, glyph_dict):
                     excl_str in k for excl_str in excl_str_list
                     if excl_str not in match_str
                 )
+                if [*map(k.count, tones)] == [n_light, n_med, n_dark]
             }
             if len(proposed_dict) < len(glyph_dict):
                 glyph_dict.clear()
@@ -265,10 +272,11 @@ while idx_row < n_rows:
             p[3:].lower() if p.startswith("u00") else p.lstrip("u").lower()
             for p in glyph_codepoints
         ]
-        if glyph.startswith("glyph-u1F469_u1F91D_u1F468"):
+        if any(glyph.startswith(f"glyph-{x}") for x in TwinCodePoints._member_map_):
             post_dot = glyph.split(".")[1]
             if len(post_dot) == 2 and len({*tuple(post_dot)}) == 1:
-                matchable_codepts = ["1f46b"]
+                glyph_codepoint_part = glyph[glyph.find("u"):glyph.find(".")]
+                matchable_codepts = TwinCodePoints[glyph_codepoint_part].value.split(",")
         partial_matchers = [ejp_df.filename.str.contains(x) for x in matchable_codepts]
         row_filter = reduce(bitwise_and, partial_matchers)
         if row_filter.any():
