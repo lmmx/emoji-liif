@@ -2,10 +2,16 @@
 
 Emoji upsampling workflow using LIIF
 
+## Preprocessing
+
+All TTF glyphs were matched to the emojipedia reference images (excluding one 'hidden' glyph),
+with the assistance of image hashing functions (however these are not used in the final version,
+instead name matching rules were used to correspond icons to the original glyphs).
+
 ## Results
 
 Results are reasonable but at 2000x2000 there is an 'out of focus' appearance, so I would prefer to
-use the original TTF file (see [below](#TODO)).
+use the original TTF file.
 
 ## Workflow
 
@@ -19,7 +25,6 @@ use the original TTF file (see [below](#TODO)).
 ## TODO
 
 - [#2:](https://github.com/lmmx/emoji-liif/issues/2) add background info on the LIIF method
-- 3122/3165 Apple Color Emoji font TTF glyphs are currently matched from OSX to Emojipedia: the 43 missed glyphs need to be matched
 
 ## Source image provenance
 
