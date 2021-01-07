@@ -76,13 +76,31 @@ class CustomGenders(Enum):
     #_u1F468_u1F91D_u1F468 = "men"
     _u1F469_u1F91D_u1F468 = "woman-and-man"
     #_u1F9D1_u1F91D_u1F9D1 = "people"
-    #_u1F9D1 = "person"
-    #_u1F468 = "man"
+    _u1F468 = "man"
+    _u1F469 = "woman"
+    _u1F9D1 = "person"
 
 class TwinCodePoints(Enum):
     u1F469_u1F91D_u1F468 = "1f46b" # man-and-woman-holding-hands
     u1F468_u1F91D_u1F468 = "1f46c" # men-holding hands
     u1F469_u1F91D_u1F469 = "1f46d" # women-holding-hands
+
+# In iOS 14.2 but not in the OSX Catalina TTF, manually exclude to resolve ambiguities
+not_in_catalina = [
+    "person-feeding-baby",
+    "polar-bear",
+    "transgender-flag",
+    "accordion_1fa97",
+    "carpentry-saw_1fa9a",
+    "coin_1fa99",
+    "hook_1fa9d",
+    "ladder_1fa9c",
+    "long-drum_1fa98",
+    "military-helmet_1fa96",
+    "mirror_1fa9e",
+    "screwdriver_1fa9b",
+    "window_1fa9f"
+]
 
 def attempt_singular_assignment(glyph, glyph_dict):
     "Attempt to whittle down multiple options from filename hints"
@@ -250,6 +268,7 @@ for i, osx_row in tqdm(osx_df.iterrows(), total=osx_df.shape[0]):
 with open("codepoint_matched_ejp_filenames.txt", "w") as f:
     f.writelines([f"{l}\n" for l in codepoint_matched_ejp_filenames])
 
+uncertain_glyph_dicts = {}
 n_rows = osx_df.shape[0]
 pbar = tqdm(total=n_rows)
 idx_row = 0
@@ -285,16 +304,13 @@ while idx_row < n_rows:
             retry_row_filter = ejp_df.filename.str.contains(matchable_codepts[0])
             if retry_row_filter.any():
                 idx_filter = retry_row_filter
-                breakpoint()
             else:
-                if matchable_codepts[0] == "27a1":
-                    breakpoint()
                 print(f"Retry failed with {matchable_codepts[0]}", file=stderr)
                 if retry_with_all_rows:
                     # Iterate over all rows (the following line is similar to np.ones_like)
                     idx_filter = pd.Series(1, ejp_df.index, dtype="bool")
         # Attempt to match without even considering the hashes, from filename alone
-        if ejp_df[idx_filter].shape[0] < 50: # probably too high a threshold who knows
+        if ejp_df[idx_filter].shape[0] < 400: # probably too high a threshold who knows
             v = {f"{L}_dist": -1 for L in "acd"}
             pre_hash_glyph_dict = {k: v for k in ejp_df[idx_filter].filename}
             attempt_singular_assignment(glyph, pre_hash_glyph_dict)
@@ -306,6 +322,8 @@ while idx_row < n_rows:
                 idx_row += 1
                 pbar.update(1)
                 continue
+            else:
+                uncertain_glyph_dicts.update({glyph: pre_hash_glyph_dict})
         for i, ejp_row in ejp_df[idx_filter].iterrows():
             ejp_filename = ejp_row.filename
             if ejp_filename in codepoint_matched_ejp_filenames:
@@ -359,3 +377,45 @@ while idx_row < n_rows:
     else:
         retry_with_all_rows = True
         # Do not increment idx_row (or update pbar) so loop will retry same row
+
+# First pass complete, now run back over the uncertain hits in a second pass and
+# exclude potential matches which were assigned decisively to glyphs in the first pass
+for extra_pass in range(3):
+    with sqlite3.connect(result_db) as conn:
+        to_match_sql = "SELECT * FROM top_hash_matches WHERE a_hash > -1"
+        to_match_df = pd.read_sql(to_match_sql, con=conn)
+        matched_sql = "SELECT * FROM top_hash_matches WHERE a_hash < 0"
+        matched_df = pd.read_sql(matched_sql, con=conn)
+
+    resolved_glyphs = []
+    if not uncertain_glyph_dicts:
+        break
+    for glyph in uncertain_glyph_dicts:
+        assignable_glyphs = [
+            k for k in uncertain_glyph_dicts.get(glyph)
+            if k not in matched_df.matched_filename.tolist()
+        ]
+        if len(assignable_glyphs) == 1:
+            # Can make a singular assignment
+            assign_glyph_as = assignable_glyphs[0]
+            glyph_dict = uncertain_glyph_dicts.get(glyph).get(assign_glyph_as)
+            values_tuple = (assign_glyph_as, glyph)
+            with sqlite3.connect(result_db) as conn:
+                c = conn.cursor()
+                c.execute("""
+                UPDATE top_hash_matches
+                SET matched_filename = (?), a_hash = -1, c_hash = -1, d_hash = -1, multimatch = 0
+                WHERE glyph_filename = (?)
+                """, values_tuple)
+            resolved_glyphs.append(glyph)
+        else:
+            pruned_glyph_dict = {
+                k: v for (k,v) in uncertain_glyph_dicts.get(glyph).items()
+                if k in assignable_glyphs
+                if not any(k.startswith(x) for x in not_in_catalina)
+            }
+            uncertain_glyph_dicts[glyph].clear()
+            uncertain_glyph_dicts[glyph].update(pruned_glyph_dict)
+
+    for glyph in resolved_glyphs:
+        del uncertain_glyph_dicts[glyph]
