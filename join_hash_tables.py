@@ -139,14 +139,18 @@ def attempt_singular_assignment(glyph, glyph_dict):
                 for x in ("light", "medium", "dark")
             ]
             excl_str_list = [f"{tone_str}-skin-tone" for tone_str in other_tone_strings]
+            ms1, ms2 = match_strings
+            matched_glyph_names = [
+                k for k in glyph_dict if k.find(ms1) > -1
+                if k[k.find(ms1)+len(ms1)+1:].find(ms2) > -1
+            ]
             proposed_dict = {
                 k: v for (k,v) in glyph_dict.items()
+                if k in matched_glyph_names
                 if not any(
                     excl_str in k for excl_str in excl_str_list
                     if all(excl_str not in match_str for match_str in match_strings)
                 )
-                if k.find(match_strings[0]) > -1
-                if k[k.find(match_strings[0]):].find(match_strings[1]) > -1
                 if k.count("light") == n_light
                 if k.count("medium") == n_med
                 if k.count("dark") == n_dark
