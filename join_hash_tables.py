@@ -74,7 +74,7 @@ class CustomGenders(Enum):
     W_u1F93C = "women"
     _u1F93C = "people"
     #_u1F468_u1F91D_u1F468 = "men"
-    #_u1F469_u1F91D_u1F468 = "woman-and-man"
+    _u1F469_u1F91D_u1F468 = "woman-and-man"
     #_u1F9D1_u1F91D_u1F9D1 = "people"
     #_u1F9D1 = "person"
     #_u1F468 = "man"
@@ -87,6 +87,12 @@ def attempt_singular_assignment(glyph, glyph_dict):
     numeric_dot_signs = [d for d in dot_signs if d.isnumeric() and len(d) == 1]
     numpair_dot_signs = [d for d in dot_signs if d.isnumeric() and len(d) == 2]
     alphabetic_dot_signs = [d for d in dot_signs if d.isalpha() and len(d) == 1]
+    for idx_p, p in enumerate(numpair_dot_signs):
+        if len({*p}) == 1:
+            twin_pair = numpair_dot_signs.pop(idx_p)
+            numeric_dot_signs.append(twin_pair[0])
+            #if glyph.startswith("glyph-u1F469_u1F91D_u1F468"):
+            #    breakpoint()
     if len(numeric_dot_signs) == 1:
         # There's a single numeric tone sign
         nds = numeric_dot_signs[0]
@@ -255,6 +261,10 @@ while idx_row < n_rows:
             p[3:].lower() if p.startswith("u00") else p.lstrip("u").lower()
             for p in glyph_codepoints
         ]
+        if glyph.startswith("glyph-u1F469_u1F91D_u1F468"):
+            post_dot = glyph.split(".")[1]
+            if len(post_dot) == 2 and len({*tuple(post_dot)}) == 1:
+                matchable_codepts = ["1f46b"]
         partial_matchers = [ejp_df.filename.str.contains(x) for x in matchable_codepts]
         row_filter = reduce(bitwise_and, partial_matchers)
         if row_filter.any():
