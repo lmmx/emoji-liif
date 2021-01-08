@@ -42,7 +42,7 @@ for png in tqdm(pngs):
     all_semi_vis_rgba = all_vis_rgba[all_vis_rgba[:,3] < 255]
     all_semi_vis_rgb = np.unique(np.sort(all_semi_vis_rgba[:,:3], axis=0), axis=0)
     
-    # Find the angle between each of the points and the colour cloud
+    # Find the distance between each of the points and the colour cloud
     for p in colour_cloud:
         colour_tup = tuple(p)
         all_distances = np.array([euclidean_dist(p,q) for q in all_semi_vis_rgb])
