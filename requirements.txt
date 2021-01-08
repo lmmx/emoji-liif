@@ -6,3 +6,4 @@ imageio
 matplotlib
 imagehash
 pandas
+scikit-image
