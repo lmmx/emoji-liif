@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from transform_utils import scale_pixel_box_coordinates, crop_image
 
 VIEWING = True
-SAVING_PLOT = False
+SAVING_PLOT = True
 
 osx_dir = Path("osx/catalina/").absolute()
 source_dir = osx_dir / "png"
@@ -49,13 +49,13 @@ def plot_comparison(
     fig.tight_layout()
     if SAVING_PLOT:
         fig.set_size_inches((20,6))
-        fig_name = "alpha_composite_comparison.png"
+        fig_name = "alpha_composite_comparison_2x2.png"
         fig.savefig(fig_name)
         reload_fig = imread(fig_name)
         fig_s = reload_fig.shape
-        clip_y_t = fig_s[0] // 10 # ~10% top crop
+        clip_y_t = fig_s[0] // 17 # ~6% top crop
         clip_y_b = -(fig_s[0] // 10) # ~10% bottom crop
-        clip_x_l = fig_s[1] // 17 # ~6% left crop
+        clip_x_l = fig_s[1] // 20 # ~5% left crop
         clip_x_r = -(fig_s[1] // 50) # ~ 2% right crop
         cropped_fig = reload_fig[clip_y_t:clip_y_b, clip_x_l:clip_x_r]
         imwrite(fig_name, cropped_fig)
@@ -74,8 +74,11 @@ try:
         elif not source_png.exists():
             raise NameError(f"Expected '{source_png}' corresponding to input '{png.name}'")
         # Store (x,y) coordinates of the box of interest
-        box_top_l = (0,104)
-        box_bot_r = (56,160)
+        #offset_tlx, offset_tly, offset_brx, offset_bry = np.array([360,475,400,512]) // 12.5
+        offset_tlx, offset_brx = 0, 0
+        offset_tly, offset_bry = 0, 0
+        box_top_l = (30+offset_tlx,144+offset_tly)
+        box_bot_r = (32-offset_brx,146-offset_bry)
         box = [box_top_l, box_bot_r]
         # Remove the mask and show the result
         img = imread(png)
