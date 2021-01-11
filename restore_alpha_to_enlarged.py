@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from transform_utils import scale_pixel_box_coordinates, crop_image
 
 VIEWING = True
-SAVING_PLOT = False
+SAVING_PLOT = True
 
 osx_dir = Path("osx/catalina/").absolute()
 source_dir = osx_dir / "png"
@@ -53,7 +53,7 @@ def plot_comparison(
         fig.savefig(fig_name)
         reload_fig = imread(fig_name)
         fig_s = reload_fig.shape
-        clip_y_t = fig_s[0] // 10 # ~10% top crop
+        clip_y_t = fig_s[0] // 15 # ~7% top crop
         clip_y_b = -(fig_s[0] // 10) # ~10% bottom crop
         clip_x_l = fig_s[1] // 17 # ~6% left crop
         clip_x_r = -(fig_s[1] // 50) # ~ 2% right crop
@@ -102,10 +102,17 @@ try:
         scaled_source_img_sub = scaled_source_img_sub.astype(int)#img.dtype)
         scaled_source_img_sub_alpha *= (1/scaled_source_img_sub_alpha.max()) * 255
         scaled_source_img_sub_alpha = scaled_source_img_sub_alpha.astype(int)#img.dtype)
+        scaled_source_img_sub_im = scaled_source_img_sub.copy() # Retain 3 channel copy
         scaled_source_img_sub = np.insert(scaled_source_img_sub, 3, scaled_source_img_sub_alpha, axis=2)
         composited_grad = img_sub.astype(int) - scaled_preproc_img_sub
         # Rescale from [-255,+255] to [0,1] by incrementing +255 then squashing by half
         composited_grad = ((composited_grad + 255) / (255*2))
+        # Now rearrange to acquire the estimatable part (the "estimand")
+        i_in = (scaled_source_img_sub_alpha[:,:,None]/255) * (scaled_source_img_sub_im/255) # alpha_source * im_source
+        #breakpoint()
+        # If squashing composited_grad to [0,1] then don't need to divide it by 255 here
+        #estimand = (composited_grad/255) - (scaled_source_img_sub_alpha[:,:,None] * i_in)
+        estimand = composited_grad - (scaled_source_img_sub_alpha[:,:,None] * i_in)
         if VIEWING:
             plot_comparison(scaled_source_img_sub_alpha, scaled_source_img_sub, img_sub, composited_grad, SAVING_PLOT)
         else:
