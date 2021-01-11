@@ -147,7 +147,16 @@ try:
             fig.tight_layout()
             if SAVING_PLOT:
                 fig.set_size_inches((20,6))
-                fig.savefig("alpha_composite_comparison.png")
+                fig_name = "alpha_composite_comparison.png"
+                fig.savefig(fig_name)
+                reload_fig = imread(fig_name)
+                fig_s = reload_fig.shape
+                clip_y_t = fig_s[0] // 10 # ~10% top crop
+                clip_y_b = -(fig_s[0] // 10) # ~10% bottom crop
+                clip_x_l = fig_s[1] // 17 # ~6% left crop
+                clip_x_r = -(fig_s[1] // 50) # ~ 2% right crop
+                cropped_fig = reload_fig[clip_y_t:clip_y_b, clip_x_l:clip_x_r]
+                imwrite(fig_name, cropped_fig)
             else:
                 fig.show()
         else:
