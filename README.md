@@ -10,8 +10,13 @@ instead name matching rules were used to correspond icons to the original glyphs
 
 ## Results
 
-Results are reasonable but at 2000x2000 there is an 'out of focus' appearance, so I would prefer to
-use the original TTF file.
+The results are nice from 160x160 PNGs extracted from the font TTF, but alpha decomposition is
+tricky. Attempting to run the alpha channel through LIIF failed to recover a mask matching the
+superresolved glyph (RGB channels) so instead I'm planning to estimate it from the RGB:
+
+![](alpha_composite_comparison.png)
+
+Work in progress...
 
 ## Workflow
 

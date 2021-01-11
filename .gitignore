@@ -1,5 +1,7 @@
 *.ttf
 *.ttc
 *.db
+alpha/
 enlarged/
+enlarged_alpha/
 transparent/
