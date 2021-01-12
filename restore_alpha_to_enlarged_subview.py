@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from transform_utils import scale_pixel_box_coordinates, crop_image
 
 VIEWING = True
-SAVING_PLOT = False
+SAVING_PLOT = True
 
 osx_dir = Path("osx/catalina/").absolute()
 source_dir = osx_dir / "png"
@@ -33,10 +33,9 @@ def plot_comparison(
         scaled_source_img_sub,
         img_sub,
         composited_grad,
-        decomp_alpha,
         SAVING_PLOT
     ):
-    fig, (ax0, ax1, ax2, ax3, ax4) = plt.subplots(1, 5, sharex=True, sharey=True)
+    fig, (ax0, ax1, ax2, ax3) = plt.subplots(1, 4, sharex=True, sharey=True)
     ax0.imshow(scaled_source_img_sub_alpha)
     ax0.set_title("Alpha")
     #ax1.imshow(scaled_preproc_img_sub[:,:,:3])
@@ -47,8 +46,6 @@ def plot_comparison(
     ax2.set_title("LIIF superresolution")
     ax3.imshow(composited_grad)
     ax3.set_title("Difference of LIIF\nfrom resized composite")
-    ax4.imshow(decomp_alpha)
-    ax4.set_title("Difference of LIIF alpha from\nresized composite (estimated)")
     fig.tight_layout()
     if SAVING_PLOT:
         fig.set_size_inches((20,6))
@@ -110,16 +107,6 @@ try:
         composited_grad = img_sub.astype(int) - scaled_preproc_img_sub
         # Rescale from [-255,+255] to [0,1] by incrementing +255 then squashing by half
         composited_grad = ((composited_grad + 255) / (255*2))
-        composited_grad *= scaled_source_img_sub_alpha[:,:,None]
-        composited_grad /= 255
-        # Rescale all opaque regions to 1 (and clip any above 1 now)
-        previous_max_alpha = scaled_source_img_sub_alpha == 255
-        min_of_previous_max_alpha = composited_grad[previous_max_alpha].min()
-        composited_grad *= (0.5/min_of_previous_max_alpha)
-        #composited_grad[scaled_source_img_sub_alpha == 255] = 0.5
-        #composited_grad /= composited_grad.max()
-        breakpoint()
-        decomp_alpha = (scaled_source_img_sub_alpha / 255) + composited_grad.max(axis=2)
         # Now rearrange to acquire the estimatable part (the "estimand")
         i_in = (scaled_source_img_sub_alpha[:,:,None]/255) * (scaled_source_img_sub_im/255) # alpha_source * im_source
         #breakpoint()
@@ -127,7 +114,7 @@ try:
         #estimand = (composited_grad/255) - (scaled_source_img_sub_alpha[:,:,None] * i_in)
         estimand = composited_grad - (scaled_source_img_sub_alpha[:,:,None] * i_in)
         if VIEWING:
-            plot_comparison(scaled_source_img_sub_alpha, scaled_source_img_sub, img_sub, composited_grad, decomp_alpha, SAVING_PLOT)
+            plot_comparison(scaled_source_img_sub_alpha, scaled_source_img_sub, img_sub, composited_grad, SAVING_PLOT)
         else:
             imwrite(output_png, output_img)
         break
