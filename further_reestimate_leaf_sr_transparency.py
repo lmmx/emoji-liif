@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from transform_utils import scale_pixel_box_coordinates, crop_image
 from scipy.ndimage import convolve
 
-SAVING_PLOT = False
+SAVING_PLOT = True
 JUPYTER = True
 
 osx_dir = Path("osx/catalina/").absolute()
