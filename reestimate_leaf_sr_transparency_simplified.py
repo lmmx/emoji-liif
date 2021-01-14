@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from transform_utils import scale_pixel_box_coordinates, crop_image
 from scipy.ndimage import convolve
 
-SAVING_PLOT = False
+SAVING_PLOT = True
 JUPYTER = True
 
 osx_dir = Path("osx/catalina/").absolute()
@@ -106,7 +106,7 @@ def plot_fig(
     fig.tight_layout()
     if SAVING_PLOT:
         fig.set_size_inches((20,14))
-        fig_name = "SR_RGBA_reconstruction_comparison.png"
+        fig_name = "SR_RGBA_reconstruction_comparison_simplified.png"
         fig.savefig(fig_name)
         reload_fig = imread(fig_name)
         fig_s = reload_fig.shape
@@ -246,7 +246,9 @@ adjustment[neg_loss_mask] = ((loss[neg_loss_mask] - 0.5) * 255)
 # Firstly, do the uniform loss mask completely
 # Do this by calculating the alpha adjustment needed to obtain the adjustment in RGB
 first_adjustment = adjustment.copy()
-first_adjustment[~uniform_equal_loss_mask] = 0
+first_adjustment[~loss_mask] = 0
+# Take minimum of each RGB: if not all equal (R=G=B) then this ensures only go "part way"
+first_adjustment_min = first_adjustment.astype(int).min(axis=2)
 # Recall that the goal is to adjust `decomposited` (as `adjusted_decomposited`) to then
 # recomposite with the unchanged background colour: so adjust the alpha channel
 
@@ -260,44 +262,13 @@ first_adjustment[~uniform_equal_loss_mask] = 0
 # α = (255 * (recomposited + adjustment - S)) / (img - S)
 # and since we've deliberately picked parts which have uniform values we can just use
 # one dimension of the 3 RGB channels as we know the rest will be the same
-alpha_change1 = ((255 * (recomposited[:,:,0].astype(int) + first_adjustment[:,:,0] - bg_shade)) / (img_sub[:,:,0] - bg_shade)) - decomp_alpha
+alpha_change1 = ((255 * (recomposited[:,:,0].astype(int) + first_adjustment_min - bg_shade)) / (img_sub[:,:,0] - bg_shade)) - decomp_alpha
 alpha_change1[~uniform_equal_loss_mask] = 0
 alpha_change1[np.isnan(alpha_change1)] = 0
 alpha_changed_mask1 = alpha_change1 != 0
 adjusted_decomposited[alpha_changed_mask1, 3] = adjusted_decomposited[alpha_changed_mask1, 3] + alpha_change1[alpha_changed_mask1]
 
-# Then do the partial loss mask partially
-#adjusted_decomposited[uniform_equal_loss_mask] = adjusted_decomposited.astype(int) + first_adjustment
-second_adjustment = adjustment.copy()
-second_adjustment[~partial_loss_mask] = 0
-second_adjustment_min = second_adjustment.astype(int).min(axis=2)
-
-# This time, only go "part of the way" by targetting the minimum
-alpha_change2 = ((255 * (recomposited[:,:,0].astype(int) + second_adjustment_min - bg_shade)) / (img_sub[:,:,0] - bg_shade)) - decomp_alpha
-alpha_change2[~partial_loss_mask] = 0
-alpha_change2[np.isnan(alpha_change2)] = 0
-alpha_changed_mask2 = alpha_change2 != 0
-adjusted_decomposited[alpha_changed_mask2, 3] = adjusted_decomposited[alpha_changed_mask2, 3] + alpha_change2[alpha_changed_mask2]
-
 adjusted_recomposited = alpha_composite_bg(adjusted_decomposited, bg_shade)
-
-# Picking up from end of the previous attempt in `reestimate_leaf_sr_transparency.py`
-# Recalculate the matrices used in the plots to then further estimate in another pass
-
-recomposited = adjusted_recomposited
-loss = (img_sub / 2 / 255) - (recomposited / 2 / 255) + 0.5
-loss_mask = np.any(loss != 0.5, axis=2)
-uniform_loss_mask = np.all(loss != 0.5, axis=2)
-uniform_equal_loss_mask = np.all(np.diff(loss, axis=2) == 0, axis=2)
-partial_loss_mask = loss_mask & np.invert(uniform_equal_loss_mask)
-if bg_shade > 0:
-    pos_loss_mask = np.all((bg_shade > decomposited[:,:,:3]), axis=2) & loss_mask
-else:
-    pos_loss_mask = np.zeros_like(loss_mask, dtype=bool)
-if bg_shade < 255:
-    neg_loss_mask = np.all((bg_shade < decomposited[:,:,:3]), axis=2) & loss_mask
-else:
-    neg_loss_mask = np.zeros_like(loss_mask, dtype=bool)
 
 fig3, f3_axes = plot_fig(
     scaled_source_img_sub_alpha,
@@ -305,13 +276,13 @@ fig3, f3_axes = plot_fig(
     img_sub,
     composited_grad,
     decomp_alpha,
-    adjusted_recomposited,
+    recomposited,
     loss,
     pos_loss_mask,
     neg_loss_mask,
-    np.zeros_like(img_sub),#first_adjustment.astype(int),
-    np.zeros_like(img_sub),#second_adjustment.astype(int),
-    np.zeros_like(img_sub),#adjusted_recomposited,
+    first_adjustment.astype(int),
+    np.zeros_like(loss),#second_adjustment.astype(int),
+    adjusted_recomposited,
     SAVING_PLOT
 )
 fig3.show()
