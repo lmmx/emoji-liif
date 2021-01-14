@@ -10,8 +10,18 @@ instead name matching rules were used to correspond icons to the original glyphs
 
 ## Results
 
-The results are nice from 160x160 PNGs extracted from the font TTF, but alpha decomposition is
-tricky. Attempting to run the alpha channel through LIIF failed to recover a mask matching the
+The results are nice from 160x160 PNGs extracted from the font TTF.
+
+![](emoji-liif-twitter-thread.png)
+
+> See [this thread](https://twitter.com/permutans/status/1345484017609691136) on Twitter for some examples
+
+However, to call this complete I'd want to recover equivalent PNGs, including transparency,
+and for this alpha decomposition is required.
+
+This turned out to be tricky!
+
+Attempting to run the alpha channel through LIIF failed to recover a mask matching the
 superresolved glyph (RGB channels) so instead I'm planning to estimate it from the RGB:
 
 ![](alpha_composite_comparison.png)
