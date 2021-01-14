@@ -72,10 +72,11 @@ def plot_fig(
         pos_loss_mask,
         neg_loss_mask,
         first_adjustment,
+        second_adjustment,
         adjusted_recomposited,
         SAVING_PLOT
     ):
-    fig, (ax0, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10) = plt.subplots(1, 11, sharex=True, sharey=True)
+    fig, ((ax0, ax1, ax2, ax3, ax4, ax5), (ax6, ax7, ax8, ax9, ax10, ax11)) = plt.subplots(2, 6, sharex=True, sharey=True)
     ax0.imshow(scaled_source_img_sub_alpha)
     ax0.set_title("LR [A]")
     #ax1.imshow(scaled_preproc_img_sub[:,:,:3])
@@ -98,20 +99,34 @@ def plot_fig(
     ax8.set_title("-ve Δ(Estimated SR, SR_c)")
     ax9.imshow(first_adjustment)
     ax9.set_title("First re-estimation mask")
-    ax10.imshow(adjusted_recomposited)
-    ax10.set_title("Re-estimated SR [RGB]")
+    ax10.imshow(second_adjustment)
+    ax10.set_title("Second re-estimation mask")
+    ax11.imshow(adjusted_recomposited)
+    ax11.set_title("Re-estimated SR [RGB]")
     fig.tight_layout()
     if SAVING_PLOT:
-        fig.set_size_inches((30,6))
+        fig.set_size_inches((20,14))
         fig_name = "SR_RGBA_reconstruction_comparison.png"
         fig.savefig(fig_name)
         reload_fig = imread(fig_name)
         fig_s = reload_fig.shape
-        clip_y_t = fig_s[0] // 4 # ~25% top crop
-        clip_y_b = -(fig_s[0] // 3) # ~33% bottom crop
-        clip_x_l = fig_s[1] // 15 # ~7% left crop
+        y_centre_clip_proportion = 10 # clip 10% either side mid-height
+        y_centre = fig_s[0] // 2
+        y_ctr_clip = fig_s[0] // y_centre_clip_proportion
+        y_ctr_clip_t = y_centre - y_ctr_clip
+        y_ctr_clip_b = y_centre + y_ctr_clip
+        clip_y_t = fig_s[0] // 6 # ~20% top crop
+        clip_y_b = -(fig_s[0] // 6) # ~20% bottom crop
+        clip_x_l = fig_s[1] // 20 # ~5% left crop
         clip_x_r = -(fig_s[1] // 50) # ~ 2% right crop
-        cropped_fig = reload_fig[clip_y_t:clip_y_b, clip_x_l:clip_x_r]
+        if y_centre_clip_proportion > 0:
+            row_coords = (
+                *np.arange(clip_y_t, y_ctr_clip_t),
+                *np.arange(y_ctr_clip_b, fig_s[0] + clip_y_b) # clip_y_b is negative
+            )
+            cropped_fig = reload_fig[row_coords, clip_x_l:clip_x_r]
+        else:
+            cropped_fig = reload_fig[clip_y_t:clip_y_b, clip_x_l:clip_x_r]
         imwrite(fig_name, cropped_fig)
     else:
         return fig, (ax0, ax1, ax2, ax3, ax4)
@@ -277,6 +292,7 @@ fig3, f3_axes = plot_fig(
     pos_loss_mask,
     neg_loss_mask,
     first_adjustment.astype(int),
+    second_adjustment.astype(int),
     adjusted_recomposited,
     SAVING_PLOT
 )
