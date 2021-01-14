@@ -15,9 +15,7 @@ shuffle(pngs)
 processed_count = 0
 try:
     for png in tqdm(pngs):
-        if png.name != "glyph-u1F343.png":
-            continue
-        output_png = out_dir / f"{png.stem}_test.png"
+        output_png = out_dir / png.name
         if output_png.exists():
             continue
         call([

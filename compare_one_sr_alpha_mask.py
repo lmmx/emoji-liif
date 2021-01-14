@@ -28,6 +28,31 @@ def get_emoji_rgb_bg(glyph):
         [r] = [g] = [b] = query_df.loc[:, "furthest_shade"].values
     return r, g, b
 
+def alpha_composite_bg(img, background_shade):
+    """
+    Linearly composite an RGBA image against a grayscale background. Image dtype
+    is preserved. Output height/width will match those of `im`, but the alpha
+    channel dimension will be dropped making it only RGB.
+    """
+    if not isinstance(background_shade, int):
+        raise TypeError("background_shade must be an integer")
+    im = img.astype(float)
+    bg = background_shade / 255
+    im_max = im.max()
+    im /= im_max # scale im to [0,1]
+    im_rgb = im[:,:,:3]
+    bg_rgb = np.ones_like(im_rgb) * bg
+    # Scale RGB according to A
+    alpha_im = im[:,:,3]
+    alpha_bg = 1 - alpha_im
+    im_rgb *= alpha_im[:,:,None]
+    bg_rgb *= alpha_bg[:,:,None]
+    composited = im_rgb + bg_rgb
+    # Rescale to original range and return to original dtype
+    composited *= im_max
+    composited = composited.astype(img.dtype)
+    return composited
+
 def plot_comparison(
         scaled_source_img_sub_alpha,
         scaled_source_img_sub,
