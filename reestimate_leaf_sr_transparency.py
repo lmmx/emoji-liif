@@ -254,13 +254,13 @@ first_adjustment[~uniform_equal_loss_mask] = 0
 # `recomposited` is calculated from linear combination of `decomposited` with `bg_shade`
 # so we want to find the value of (R,G,B,A) that when recomposited will give (R+x,G+y,B+z)
 
-# The equation rearranges for alpha to become:
-# α = (255 * (recomposited + adjustment)) / (img + ((255 - 1) * S))
-# Or if we just want the change to alpha,
-# Δ = ((255 * (recomposited + adjustment)) / (img + ((255 - 1) * S))) - α
+# The equation is:
+# (1/255) * (α * img + S*(255 - α)) = recomposited + adjustment
+# which rearranges for α to become:
+# α = (255 * (recomposited + adjustment - S)) / (img - S)
 # and since we've deliberately picked parts which have uniform values we can just use
 # one dimension of the 3 RGB channels as we know the rest will be the same
-alpha_change1 = ((255 * (recomposited[:,:,0].astype(int) + first_adjustment[:,:,0])) / (img_sub[:,:,0] + ((255 - 1) * bg_shade))) - decomp_alpha
+alpha_change1 = ((255 * (recomposited[:,:,0].astype(int) + first_adjustment[:,:,0] - bg_shade)) / (img_sub[:,:,0] - bg_shade)) - decomp_alpha
 alpha_change1[~uniform_equal_loss_mask] = 0
 alpha_change1[np.isnan(alpha_change1)] = 0
 alpha_changed_mask1 = alpha_change1 != 0
@@ -273,7 +273,7 @@ second_adjustment[~partial_loss_mask] = 0
 second_adjustment_min = second_adjustment.astype(int).min(axis=2)
 
 # This time, only go "part of the way" by targetting the minimum
-alpha_change2 = ((255 * (recomposited[:,:,0].astype(int) + second_adjustment_min)) / (img_sub[:,:,0] + ((255 - 1) * bg_shade))) - decomp_alpha
+alpha_change2 = ((255 * (recomposited[:,:,0].astype(int) + second_adjustment_min - bg_shade)) / (img_sub[:,:,0] - bg_shade)) - decomp_alpha
 alpha_change2[~partial_loss_mask] = 0
 alpha_change2[np.isnan(alpha_change2)] = 0
 alpha_changed_mask2 = alpha_change2 != 0
