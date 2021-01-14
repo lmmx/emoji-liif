@@ -107,9 +107,9 @@ def plot_fig(
         fig.savefig(fig_name)
         reload_fig = imread(fig_name)
         fig_s = reload_fig.shape
-        clip_y_t = fig_s[0] // 5 # ~20% top crop
-        clip_y_b = -(fig_s[0] // 5) # ~20% bottom crop
-        clip_x_l = fig_s[1] // 17 # ~6% left crop
+        clip_y_t = fig_s[0] // 4 # ~25% top crop
+        clip_y_b = -(fig_s[0] // 3) # ~33% bottom crop
+        clip_x_l = fig_s[1] // 15 # ~7% left crop
         clip_x_r = -(fig_s[1] // 50) # ~ 2% right crop
         cropped_fig = reload_fig[clip_y_t:clip_y_b, clip_x_l:clip_x_r]
         imwrite(fig_name, cropped_fig)
