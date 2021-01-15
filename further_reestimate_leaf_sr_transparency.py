@@ -7,7 +7,6 @@ from imageio import imread, imwrite
 import numpy as np
 from skimage import transform as tf
 from skimage.util import img_as_ubyte, img_as_float
-from sklearn.preprocessing import normalize
 from matplotlib import pyplot as plt
 from transform_utils import scale_pixel_box_coordinates, crop_image
 from scipy.ndimage import convolve
@@ -296,6 +295,7 @@ adjusted_recomposited = alpha_composite_bg(adjusted_decomposited, bg_shade)
 recomposited = adjusted_recomposited
 loss = (img_sub / 2 / 255) - (recomposited / 2 / 255) + 0.5
 loss_mask = np.any(loss != 0.5, axis=2)
+decomposited[loss_mask, 3] = 1
 uniform_loss_mask = np.all(loss != 0.5, axis=2)
 uniform_equal_loss_mask = np.all(np.diff(loss, axis=2) == 0, axis=2)
 partial_loss_mask = loss_mask & np.invert(uniform_equal_loss_mask)
@@ -307,6 +307,13 @@ if bg_shade < 255:
     neg_loss_mask = np.all((bg_shade < decomposited[:,:,:3]), axis=2) & loss_mask
 else:
     neg_loss_mask = np.zeros_like(loss_mask, dtype=bool)
+
+# The problem is potentially solved now and any remaining pixels will be either:
+# - a background pixel to be interpolated
+# - the trivially fully opaque ones
+
+# The remaining alpha to be assigned is:
+# adjusted_decomposited[loss_mask, 3]
 
 fig3, f3_axes = plot_fig(
     scaled_source_img_sub_alpha,

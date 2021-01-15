@@ -7,7 +7,6 @@ from imageio import imread, imwrite
 import numpy as np
 from skimage import transform as tf
 from skimage.util import img_as_ubyte, img_as_float
-from sklearn.preprocessing import normalize
 from matplotlib import pyplot as plt
 from transform_utils import scale_pixel_box_coordinates, crop_image
 from scipy.ndimage import convolve
@@ -288,7 +287,7 @@ alpha_change2[np.isnan(alpha_change2)] = 0
 alpha_changed_mask2 = alpha_change2 != 0
 adjusted_decomposited[alpha_changed_mask2, 3] = adjusted_decomposited[alpha_changed_mask2, 3] + alpha_change2[alpha_changed_mask2]
 
-adjusted_recomposited = alpha_composite_bg(adjusted_decomposited, bg_shade)
+adjusted_recomposited = alpha_composite_bg(adjusted_decomposited, 255 - bg_shade)
 
 fig3, f3_axes = plot_fig(
     scaled_source_img_sub_alpha,
