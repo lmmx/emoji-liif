@@ -6,11 +6,13 @@ from sys import stderr
 from imageio import imread, imwrite
 import numpy as np
 from skimage import transform as tf
+from skimage.util import img_as_ubyte, img_as_float
+from sklearn.preprocessing import normalize
 from matplotlib import pyplot as plt
 from transform_utils import scale_pixel_box_coordinates, crop_image
 from scipy.ndimage import convolve
 
-SAVING_PLOT = False
+SAVING_PLOT = True
 JUPYTER = True
 
 osx_dir = Path("osx/catalina/").absolute()
@@ -106,7 +108,7 @@ def plot_fig(
     fig.tight_layout()
     if SAVING_PLOT:
         fig.set_size_inches((20,14))
-        fig_name = "SR_RGBA_reconstruction_comparison.png"
+        fig_name = "SR_RGBA_further_reconstruction_comparison.png"
         fig.savefig(fig_name)
         reload_fig = imread(fig_name)
         fig_s = reload_fig.shape
@@ -152,23 +154,30 @@ source_img_sub = crop_image(source_img, box)
 preproc_img_sub = crop_image(preproc_img, box)
 source_img_sub_alpha = source_img_sub[:,:,3]
 img_sub = crop_image(img, scaled_box)
-scaled_preproc_img_sub = tf.resize(
-    preproc_img_sub[:,:,:3], img_sub.shape, order=0
+
+def rescale_float_img_to_0_255_int64(float_img):
+    """
+    tf.resize has not preserved range, so multiply the `float_img` by the reciprocal of
+    its maximum (to restore to the range [0,1]) then transform to [0,255] then convert
+    the uint8 type to int64
+    """
+    if (float_img < 0).any():
+        raise ValueError("Error: about to clip sub-zero values via `img_as_ubyte`")
+    return img_as_ubyte( float_img * np.reciprocal(float_img.max()) ).astype(int)
+
+scaled_preproc_img_sub = rescale_float_img_to_0_255_int64(
+    tf.resize(preproc_img_sub[:,:,:3], img_sub.shape, order=0)
 )
-scaled_source_img_sub = tf.resize(
-    source_img_sub[:,:,:3], img_sub.shape, order=0
+
+scaled_source_img_sub = rescale_float_img_to_0_255_int64(
+    tf.resize(source_img_sub[:,:,:3], img_sub.shape, order=0)
 )
-scaled_source_img_sub_alpha = tf.resize(
-    source_img_sub_alpha, img_sub[:,:,0].shape, order=0
+
+scaled_source_img_sub_alpha = rescale_float_img_to_0_255_int64(
+    tf.resize(source_img_sub_alpha, img_sub[:,:,0].shape, order=0)
 )
-scaled_preproc_img_sub *= (1/scaled_preproc_img_sub.max()) * 255
-scaled_preproc_img_sub = scaled_preproc_img_sub.astype(int)#img.dtype)
-scaled_source_img_sub *= (1/scaled_source_img_sub.max()) * 255
-scaled_source_img_sub = scaled_source_img_sub.astype(int)#img.dtype)
-scaled_source_img_sub_alpha *= (1/scaled_source_img_sub_alpha.max()) * 255
-scaled_source_img_sub_alpha = scaled_source_img_sub_alpha.astype(int)#img.dtype)
-scaled_source_img_sub_im = scaled_source_img_sub.copy() # Retain 3 channel copy
 scaled_source_img_sub = np.insert(scaled_source_img_sub, 3, scaled_source_img_sub_alpha, axis=2)
+
 composited_grad = img_sub.astype(int) - scaled_preproc_img_sub
 # Rescale from [-255,+255] to [0,1] by incrementing +255 then squashing by half
 composited_grad = ((composited_grad + 255) / (255*2))
@@ -240,7 +249,7 @@ else:
 
 adjusted_decomposited = decomposited.copy()
 adjustment = np.zeros_like(loss)
-adjustment[neg_loss_mask] = ((loss[neg_loss_mask] - 0.5) * 255)
+adjustment[neg_loss_mask] = ((loss[neg_loss_mask] - 0.5) * 2 * 255)
 #adjustment = adjustment.astype("int")
 
 # Firstly, do the uniform loss mask completely

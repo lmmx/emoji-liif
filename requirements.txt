@@ -7,3 +7,4 @@ matplotlib
 imagehash
 pandas
 scikit-image
+scikit-learn
