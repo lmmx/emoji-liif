@@ -126,13 +126,14 @@ TODO...
 - Find a dataset of images with alpha channel (DIV2K has 1000 images in 8:1:1 split) and train a 4
   channel model to avoid having to alpha decomposite
   - Alternatively find some way to supervise the decompositing (there are no such datasets around...)
-- PyTorch 1.7.1 introduced `set_per_process_memory_fraction`, not clear whether this will be more 
+- PyTorch 1.8.0 introduced `set_per_process_memory_fraction`, not clear whether this will be more 
   desirable (it sounds like it raises a CUDA out of memory error if the process tries to take more
   memory than allocated, which is happening anyway with multiple processes, so I don't know if this
   would actually help unless there was a way for the process to detect the size of its
   allocation...)
   - Check to see if perhaps allowing only half the CPU cores would speed up the total run time,
     which would be the case if the bottleneck was at the GPU rather than CPU
+  - If it's helpful, see if PyTorch will work with 1.8.0
 
 ## Source image provenance
 
