@@ -8,6 +8,44 @@ All TTF glyphs were matched to the emojipedia reference images (excluding one 'h
 with the assistance of image hashing functions (however these are not used in the final version,
 instead name matching rules were used to correspond icons to the original glyphs).
 
+## Usage
+
+To enlarge the extracted glyphs, run `enlarge_osx_glyphs.py` which will populate the `enlarged`
+directory (skipping any glyphs already enlarged in this way). By default this will be sped up
+by multiprocessing on all available cores.
+
+## Requirements
+
+See [requirements.txt](requirements.txt)
+
+- [LIIF](https://github.com/yinboc/liif)
+  - Currently this requires a sibling directory `../liif/` with LIIF installed there (change this in the `path_to_liif_script` and
+    `path_to_model` variables in `enlarge_osx_glyphs.py`)
+  - Python 3
+  - PyTorch >= 1.6.0
+    - If your CUDA is greater than 10.2 then get a more recent PyTorch e.g. 1.7.1
+    - See [here](https://pytorch.org/get-started/locally/)
+  - Depends: `TensorboardX, yaml, numpy, tqdm, imageio`
+- `bs4, requests, fonttools, matplotlib, more_itertools, imagehash, pandas, scikit-image`
+
+I get everything via `pip` except `cudatoolkit` and `torch`/`torchvision` which come via conda (`-c pytorch`)
+
+- via [this GitHub issue comment](https://github.com/pytorch/pytorch/issues/46794#issuecomment-718190681)
+
+However there is currently an [open bug](https://github.com/pytorch/pytorch/issues/51080) in PyTorch
+resolvable by changing the CUDA toolkit dependency to `cudatoolkit>=11.0,<11.0.221`
+
+```sh
+conda create -n liif_env
+conda activate liif_env
+# gives cudatoolkit=11.0.3:
+conda install "cudatoolkit>=11.0,<11.0.221" -c conda-forge
+# gives pytorch=1.7.1, torchvision=0.8.2, also adds python=3.8.5:
+conda install pytorch torchvision -c pytorch 
+# Install the rest via PyPi:
+pip install $(cat requirements.txt | grep -Ev "^(torch(vision)?)$")
+```
+
 ## Results
 
 The results are nice from 160x160 PNGs extracted from the font TTF.

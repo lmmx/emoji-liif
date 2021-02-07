@@ -5,5 +5,10 @@ fonttools
 imageio
 matplotlib
 imagehash
+more_itertools
 pandas
+PyYAML
 scikit-image
+tensorboardX
+torch
+torchvision
