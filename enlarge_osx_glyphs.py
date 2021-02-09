@@ -36,7 +36,7 @@ if USE_MULTI_CORE:
         )
         liif_calls.append(call_liif)
     try:
-        batch_multiprocess(liif_calls)
+        batch_multiprocess(liif_calls, n_cores=10)
     except KeyboardInterrupt as e:
         print(f"Exitting early...", file=stderr)
 else:
